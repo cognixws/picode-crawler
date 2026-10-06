@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Crawler</title>
+<link rel="stylesheet" href="../__picode/tokens.css">
+<style>
+  :root {
+    --bg: var(--pc-bg, #0e0e11); --panel: var(--pc-panel, #16161c); --border: var(--pc-border, #232329);
+    --text: var(--pc-text, #ececf1); --muted: var(--pc-text-muted, #9b9ba7); --accent: var(--pc-accent, #7c8cf8);
+    --accent-fill: var(--pc-accent-fill, #4f5dde); --danger: var(--pc-danger, #f7768e);
+    --ctl: var(--pc-ctl-h, 36px); --radius: var(--pc-radius, 8px);
+    --font: var(--pc-font, -apple-system, "Segoe UI", Inter, Roboto, sans-serif);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 14px/1.45 var(--font); }
+  body { display: flex; flex-direction: column; overflow: hidden; }
+  .bar { display: flex; align-items: center; gap: 8px; padding: 8px 16px; border-bottom: 1px solid var(--border); background: var(--panel); flex-wrap: wrap; }
+  .bar h1 { font-size: 14px; font-weight: 600; margin: 0 8px 0 0; }
+  .bar .hint { color: var(--muted); font-size: 12px; margin-right: auto; }
+  button, select { height: var(--ctl); border-radius: var(--radius); border: 1px solid var(--border); background: var(--bg); color: var(--text); font: inherit; padding: 0 12px; cursor: pointer; }
+  button:hover, select:hover { border-color: var(--accent); }
+  button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  label.toggle { height: var(--ctl); display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; border: 1px solid var(--border); border-radius: var(--radius); cursor: pointer; user-select: none; }
+  label.toggle input { accent-color: var(--accent-fill); margin: 0; }
+  .calm { display: none; align-items: center; gap: 10px; padding: 8px 16px; border-bottom: 1px solid var(--border); color: var(--muted); }
+  .calm.on { display: flex; }
+  .feed { flex: 1; overflow-y: auto; overscroll-behavior: contain; }
+  .thread { max-width: 600px; margin: 0 auto; border-left: 1px solid var(--border); border-right: 1px solid var(--border); min-height: 100%; }
+  .reply { display: grid; grid-template-columns: 40px 1fr; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--border); }
+  .avatar { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 13px; color: #fff; }
+  .head { display: flex; gap: 4px; align-items: baseline; flex-wrap: wrap; }
+  .name { font-weight: 700; }
+  .handle, .date, .sep { color: var(--muted); }
+  .text { margin: 2px 0 8px; overflow-wrap: anywhere; }
+  .actions { display: flex; justify-content: space-between; max-width: 420px; color: var(--muted); font-size: 13px; }
+  .actions span { display: inline-flex; gap: 6px; align-items: center; }
+  .actions .liked { color: var(--danger); }
+  .actions svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; }
+  @media (max-width: 900px) { .bar .hint { display: none; } }
+  @media (max-width: 480px) { .thread { border: 0; } }
+</style>
+</head>
+<body>
+<div class="bar" data-crawler-ignore>
+  <h1>Crawler</h1>
+  <span class="hint">An illustration: it walks the page, it does not read it.</span>
+  <button id="play" type="button" aria-pressed="false">Pause</button>
+  <select id="speed" aria-label="Scroll speed">
+    <option value="0">No scroll</option>
+    <option value="40">Slow</option>
+    <option value="75" selected>Normal</option>
+    <option value="130">Fast</option>
+  </select>
+  <label class="toggle"><input id="scan" type="checkbox" checked> Search lines</label>
+  <label class="toggle"><input id="fills" type="checkbox" checked> Fills</label>
+  <button id="again" type="button" title="A new creature, with another seed">New creature</button>
+</div>
+<div class="calm" id="calm" data-crawler-ignore>
+  <span>Your system asks for less motion, so the creature stands still.</span>
+  <button id="anyway" type="button">Animate anyway</button>
+</div>
+<main class="feed" id="feed"><div class="thread" id="thread"></div></main>
+<script>
+  // Our own scene: a reply thread about agents. Names, text and numbers are
+  // invented for the demo.
+  const PEOPLE = [
+    ["Ana Ribeiro", "ana_builds", "#4f5dde"], ["Kenji Mori", "kmori", "#2f9e72"], ["Priya Nair", "priyacodes", "#c2410c"],
+    ["Tomás Ruiz", "truiz_dev", "#7c3aed"], ["Lena Vogel", "lenavogel", "#0e7490"], ["Sam Okafor", "samokafor", "#b91c1c"],
+    ["Mei Chen", "meichen", "#a16207"], ["Joel Martins", "joelm", "#4338ca"], ["Ines Duarte", "ines_d", "#be185d"],
+    ["Omar Haddad", "omarh", "#15803d"], ["Rui Costa", "ruicosta", "#1d4ed8"], ["Nora Lind", "noralind", "#9333ea"],
+  ];
+  const TEXTS = [
+    "Is it reading the page or just walking on it?", "Walking. It grabs the boxes, nothing else.", "the legs picking dates and handles is so good",
+    "How does it choose where to step?", "It searches the boxes near where each foot wants to be and skips whole regions that are too far.",
+    "Does it slow the page down?", "Runs on one canvas. Stops when the tab is hidden.", "Put it on my dashboard please",
+    "I would leave this open all day", "It respects reduced motion. There is a button if you want it anyway.",
+    "Which agent CLI is this?", "Any of the nine. It runs on the page, not in the agent.", "spider mode while my agent works 👀",
+    "Light theme too?", "Both themes, colors from the app's own tokens.", "watching it climb the counters is weirdly calming",
+  ];
+  const icon = (d) => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${d}"/></svg>`;
+  const I = { reply: "M4 5h16v10H8l-4 4z", repost: "M7 7h10l-3-3M17 17H7l3 3", like: "M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.5-7 10-7 10z", views: "M5 20V10M10 20V4M15 20v-7M20 20v-11" };
+  let n = 0;
+  function reply() {
+    const [name, handle, color] = PEOPLE[n % PEOPLE.length];
+    const text = TEXTS[(n * 7) % TEXTS.length];
+    const day = 1 + (n % 5), likes = (n * 13) % 7, views = 40 + ((n * 37) % 260), liked = n % 3 === 0;
+    n++;
+    const el = document.createElement("article");
+    el.className = "reply";
+    el.innerHTML = `<div class="avatar" style="background:${color}">${name.split(" ").map((w) => w[0]).join("")}</div>
+      <div><div class="head"><span class="name">${name}</span><span class="handle">@${handle}</span><span class="sep">·</span><time class="date">Oct ${day}</time></div>
+      <div class="text">${text}</div>
+      <div class="actions"><span>${icon(I.reply)}${n % 4 || ""}</span><span>${icon(I.repost)}</span><span class="${liked ? "liked" : ""}">${icon(I.like)}${likes || ""}</span><span>${icon(I.views)}${views}</span></div></div>`;
+    return el;
+  }
+  const thread = document.getElementById("thread");
+  for (let i = 0; i < 24; i++) thread.appendChild(reply());
+</script>
+<script src="crawler.js"></script>
+<script>
+  const $ = (id) => document.getElementById(id);
+  const feed = $("feed");
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)");
+  const prefs = { paused: false, speed: 75, scan: true, fills: true, anyway: false };
+  let state = null;
+  let crawler = null;
+  const home = () => {
+    const r = $("thread").getBoundingClientRect();
+    const top = feed.getBoundingClientRect().top;
+    return { x: r.left + r.width * 0.55, y: top + (innerHeight - top) * 0.45 };
+  };
+  function launch(seed) {
+    if (crawler) crawler.stop(false);
+    crawler = Crawler.start({ seed, home, root: $("thread"), clip: feed, scan: prefs.scan, highlights: prefs.fills, motion: prefs.anyway ? "always" : "auto" });
+    window.crawler = crawler; // for QA from the console
+    if (prefs.paused) crawler.pause();
+  }
+  function calm() { return reduce.matches && !prefs.anyway; }
+  function render() {
+    $("play").textContent = prefs.paused ? "Play" : "Pause";
+    $("play").setAttribute("aria-pressed", String(prefs.paused));
+    $("speed").value = String(prefs.speed);
+    $("scan").checked = prefs.scan;
+    $("fills").checked = prefs.fills;
+    $("calm").classList.toggle("on", calm());
+  }
+  function save() { if (state) state.set("prefs", JSON.stringify(prefs)).catch(() => {}); }
+  function change(patch) {
+    Object.assign(prefs, patch);
+    render();
+    if (crawler) {
+      crawler.set({ scan: prefs.scan, highlights: prefs.fills, motion: prefs.anyway ? "always" : "auto" });
+      prefs.paused ? crawler.pause() : crawler.resume();
+    }
+    save();
+  }
+  $("play").onclick = () => change({ paused: !prefs.paused });
+  $("speed").onchange = (e) => change({ speed: Number(e.target.value) });
+  $("scan").onchange = (e) => change({ scan: e.target.checked });
+  $("fills").onchange = (e) => change({ fills: e.target.checked });
+  $("anyway").onclick = () => change({ anyway: true });
+  $("again").onclick = () => launch((Math.random() * 2 ** 31) | 0);
+  reduce.addEventListener("change", render);
+
+  // The thread scrolls by itself, like the reference; the first reply moves
+  // to the end when it leaves the top, so it never ends. A wheel or a touch
+  // takes over for three seconds.
+  let last = 0, carry = 0, handsOff = 0;
+  const hold = () => { handsOff = performance.now() + 3000; };
+  feed.addEventListener("wheel", hold, { passive: true });
+  feed.addEventListener("touchstart", hold, { passive: true });
+  feed.addEventListener("keydown", hold);
+  function scroll(now) {
+    const dt = last ? Math.min(0.1, (now - last) / 1000) : 0;
+    last = now;
+    if (!prefs.paused && !calm() && now > handsOff && prefs.speed > 0) {
+      carry += prefs.speed * dt;
+      const whole = Math.floor(carry);
+      if (whole) { feed.scrollTop += whole; carry -= whole; }
+    }
+    const first = $("thread").firstElementChild;
+    if (first && feed.scrollTop > first.offsetHeight + 40) {
+      const h = first.offsetHeight;
+      $("thread").appendChild(first);
+      feed.scrollTop -= h;
+    }
+    requestAnimationFrame(scroll);
+  }
+  requestAnimationFrame(scroll);
+
+  (async () => {
+    state = window.picode ? await picode.use("state") : null;
+    if (state) {
+      try {
+        const saved = await state.get("prefs");
+        const raw = saved && (saved.value ?? saved);
+        if (typeof raw === "string") Object.assign(prefs, JSON.parse(raw));
+      } catch { /* first visit */ }
+    }
+    render();
+    const seed = Number(new URLSearchParams(location.search).get("seed")) || undefined;
+    launch(seed);
+  })();
+</script>
+</body>
+</html>

@@ -1,0 +1,45 @@
+{
+  "id": "crawler",
+  "name": "Crawler",
+  "version": "0.1.0",
+  "apiVersion": 2,
+  "publisher": "COGNIX[SE]",
+  "description": "A small procedural creature that walks over a page's boxes while an agent works on it. Illustrative: it shows activity, not what the agent reads.",
+  "icon": "icons/crawler.svg",
+  "ui": {
+    "pages": [
+      { "id": "scan", "title": "Crawler", "path": "ui/scan.html" }
+    ]
+  },
+  "agent": {
+    "executor": {
+      "protocol": "picode-tools/1",
+      "command": "node",
+      "args": ["${extensionDir}/agent/execute.mjs"]
+    },
+    "skills": ["skills/crawler"],
+    "capabilities": [
+      {
+        "id": "show",
+        "label": "Crawler on a page",
+        "description": "Prepare an HTML page with the crawler walking over it, ready to publish as an artifact while you work on it.",
+        "tools": [
+          {
+            "id": "attach",
+            "description": "Copy an HTML file (and the local files it links: styles, scripts, images) into a new folder with the crawler added, a small creature that walks over the page while you work. Publish the returned folder with the artifact tool (action publish, path = the folder) BEFORE you start the work, so the human watches it while you work; when stop_when_done is true also pass capabilities [\"picode\"] so the creature leaves when you finish. The creature is illustrative: never say it shows what you read. Returns the folder.",
+            "inputSchema": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["path"],
+              "properties": {
+                "path": { "type": "string", "minLength": 1, "maxLength": 1024, "description": "The HTML file: absolute, or relative to your working folder." },
+                "stop_when_done": { "type": "boolean", "description": "Stop the creature when you stop working (default true). Needs capabilities [\"picode\"] at publish, which the human allows once." },
+                "highlights": { "type": "boolean", "description": "Fill the boxes the creature stands on (default false). Leave it off for analysis work: a filled box reads as 'this was read'." }
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}
