@@ -27,3 +27,19 @@ lines show your analysis.
 Leave `highlights` off for analysis: a filled box reads as "this was read".
 
 If you have no artifact tool, say so and give the human the folder path.
+
+## A site open in your browser tab
+
+When the human asks for the crawler on a site you have open with the browser
+tool (a feed, search results, an article):
+
+1. Call `show.site` (`descend` is on by default; `root` is a CSS selector for
+   the part to walk on, such as a results column; `top` scrolls to the top).
+2. Pass everything after the line `---` of its answer, unchanged, as the
+   `expression` of your browser tool's `evaluate` verb. It answers that the
+   crawler started.
+3. It is about 27 KB: send it once per page, only when asked. A reload removes
+   it; `show.site` with `stop: true` gives the short expression that stops it.
+
+If the answer says the tab is hidden, tell the human it starts moving when
+they open the tab.

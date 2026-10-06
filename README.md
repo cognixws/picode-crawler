@@ -11,6 +11,7 @@ what the agent reads. Agents are told so, and the tool says so in its answer.
 |---|---|
 | Page **Crawler** (Apps tile and tab, phone in More → Apps) | A reply thread that scrolls by itself with the creature on it. Pause, scroll speed, search lines, fills and a new creature; the choices are kept |
 | Tool `show.attach` (all nine CLIs) | Copies an HTML file and the local files it links into a new folder with the crawler added, ready for the artifact tool |
+| Tool `show.site` (all nine CLIs) | For a site open in the agent's browser tab: one expression the agent passes to its browser tool's `evaluate`, about 27 KB, sent once per page |
 | Skill `crawler` (Pi, Omp, Claude Code) | The flow: attach, publish before working, work, reply |
 
 It asks PiCode for nothing: no permissions, no background process.

@@ -2,6 +2,7 @@
 // show.attach copies an HTML file and the local files it links into a new
 // folder, adds the crawler, and returns the folder for the artifact tool.
 import { attach } from "../lib/attach.mjs";
+import { siteScript, STOP } from "../lib/site.mjs";
 
 let text = "";
 for await (const chunk of process.stdin) text += chunk;
@@ -12,8 +13,24 @@ function refuse(message) { answer({ content: [{ type: "text", text: message }], 
 let request;
 try { request = JSON.parse(text); } catch { refuse("The request is not JSON."); process.exit(0); }
 
-if (request.protocol !== "picode-tools/1" || request.capability !== "show" || request.tool !== "attach") {
+if (request.protocol !== "picode-tools/1" || request.capability !== "show" || !["attach", "site"].includes(request.tool)) {
   refuse("Unknown tool.");
+} else if (request.tool === "site") {
+  const args = request.arguments || {};
+  try {
+    const expression = args.stop === true ? STOP : siteScript({
+      descend: args.descend !== false,
+      highlights: args.highlights === true,
+      root: typeof args.root === "string" ? args.root : "",
+      top: args.top === true,
+    });
+    const how = args.stop === true
+      ? "Pass this to your browser tool: verb evaluate, expression = the text below, unchanged."
+      : "Pass this to your browser tool: verb evaluate, expression = everything after the line ---, unchanged. It answers with a line saying it started. It is illustrative: it does not show what you read.";
+    answer({ content: [{ type: "text", text: `${how}\n---\n${expression}` }] });
+  } catch (err) {
+    refuse(err && err.message ? err.message : String(err));
+  }
 } else {
   try {
     const args = request.arguments || {};

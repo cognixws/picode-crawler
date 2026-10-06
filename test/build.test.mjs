@@ -14,7 +14,7 @@ test("the manifest declares the page, the tool and the skill, and nothing else",
   assert.equal(m.id, "crawler");
   assert.equal(m.apiVersion, 2);
   assert.deepEqual(m.ui.pages.map((p) => p.path), ["ui/scan.html"]);
-  assert.deepEqual(m.agent.capabilities.map((c) => c.id + "." + c.tools.map((t) => t.id).join()), ["show.attach"]);
+  assert.deepEqual(m.agent.capabilities.map((c) => c.id + "." + c.tools.map((t) => t.id).join()), ["show.attach,site"]);
   assert.equal(m.permissions, undefined, "it asks PiCode for nothing");
   assert.equal(m.process, undefined, "no background process");
 });

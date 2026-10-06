@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.3 — 2026-10-06
+
+- **`show.site`**: the crawler on a site open in the agent's browser tab (a
+  feed, search results). The tool returns one expression the agent passes to
+  its browser tool's `evaluate`; it carries the whole crawler, so the site's
+  own policies do not block it. Cost: about 27 KB through the agent, once per
+  page. Options: descend (on by default), highlights, a root selector, top;
+  `stop: true` removes it.
+
 ## 0.1.2 — 2026-10-06
 
 - **Descend mode** (`data-descend`, or `descend: true` / `{speed}` from

@@ -1,4 +1,4 @@
-/* Crawler 0.1.2 — github.com/cognixws/picode-crawler (Apache-2.0). Built from lib/; do not edit. */
+/* Crawler 0.1.3 — github.com/cognixws/picode-crawler (Apache-2.0). Built from lib/; do not edit. */
 (function () {
 "use strict";
 // The crawler's engine, with no DOM: a tree of boxes, a hierarchical search
@@ -798,6 +798,6 @@ function autostart() {
   else go();
 }
 
-window.Crawler = Object.freeze({ version: "0.1.2", start, watchAgent });
+window.Crawler = Object.freeze({ version: "0.1.3", start, watchAgent });
 autostart();
 })();
