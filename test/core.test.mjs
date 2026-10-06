@@ -137,3 +137,29 @@ test("no planted foot stays on the far side of the body", () => {
   }
   assert.ok(worst <= 30, `a foot stayed on the far side for ${worst} frames`);
 });
+
+function segmentsCross(a, b, c, d) {
+  const o = (p, q, r) => Math.sign((q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x));
+  return o(a, b, c) * o(a, b, d) < 0 && o(c, d, a) * o(c, d, b) < 0;
+}
+
+test("planted legs rarely cross one another", () => {
+  const { tree } = page();
+  const c = createCreature({ seed: 2, home: { x: 400, y: 600 } });
+  let crossings = 0, frames = 0;
+  for (let i = 0; i < 600; i++) {
+    update(c, tree);
+    if (i < 120) continue;
+    frames++;
+    const legs = c.legs.filter((l) => l.anchor);
+    for (let a = 0; a < legs.length; a++) for (let b = a + 1; b < legs.length; b++) {
+      const A = legs[a].joints, B = legs[b].joints;
+      let hit = false;
+      for (let i2 = 1; i2 < A.length && !hit; i2++) for (let j = 1; j < B.length && !hit; j++) hit = segmentsCross(A[i2 - 1], A[i2], B[j - 1], B[j]);
+      if (hit) crossings++;
+    }
+  }
+  // Measured 2026-10-06: 4.61 crossing pairs per frame before the knees
+  // followed the rest directions, 0.89 after.
+  assert.ok(crossings / frames < 1.2, `${(crossings / frames).toFixed(2)} crossing pairs per frame`);
+});
