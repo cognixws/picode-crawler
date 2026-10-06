@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { createCreature, update, frame, search, wrongSide, solveChain, gripPoint, distToRect, neighbours, random } from "../lib/core.mjs";
+import { createCreature, update, frame, search, wrongSide, clearSpot, solveChain, gripPoint, distToRect, neighbours, random } from "../lib/core.mjs";
 
 // A page of boxes in rows, like a reply thread: rows hold small leaves.
 // `dy` scrolls everything, the way a page scroll moves every box.
@@ -162,4 +162,28 @@ test("planted legs rarely cross one another", () => {
   // Measured 2026-10-06: 4.61 crossing pairs per frame before the knees
   // followed the rest directions, 0.89 after.
   assert.ok(crossings / frames < 1.2, `${(crossings / frames).toFixed(2)} crossing pairs per frame`);
+});
+
+test("a swinging foot never comes under its hip", () => {
+  const { tree } = page();
+  const c = createCreature({ seed: 6, home: { x: 400, y: 600 } });
+  let closest = Infinity;
+  for (let i = 0; i < 600; i++) {
+    tree.dy -= 0.8;
+    update(c, tree);
+    // A step that just began still stands where it was planted; measure it in flight.
+    for (const leg of c.legs) if (leg.step && leg.step.t > 0) closest = Math.min(closest, Math.hypot(leg.foot.x - leg.hip.x, leg.foot.y - leg.hip.y));
+  }
+  assert.ok(closest >= c.o.reach * 0.62 - 0.01, `a foot in the air came ${closest.toFixed(1)} px from its hip`);
+});
+
+test("the body comes to rest off small boxes when there is room", () => {
+  const { tree } = page();
+  const c = createCreature({ seed: 8, home: { x: 400, y: 600 } });
+  let clear = 0, picks = 0, last = null;
+  for (let i = 0; i < 1800; i++) {
+    update(c, tree);
+    if (c.waypoint !== last) { last = c.waypoint; picks++; if (clearSpot(c, tree, c.waypoint)) clear++; }
+  }
+  assert.ok(picks > 5 && clear / picks > 0.8, `${clear} of ${picks} resting spots were clear`);
 });

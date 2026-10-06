@@ -1,7 +1,7 @@
 {
   "id": "crawler",
   "name": "Crawler",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "apiVersion": 2,
   "publisher": "COGNIX[SE]",
   "description": "A small procedural creature that walks over a page's boxes while an agent works on it. Illustrative: it shows activity, not what the agent reads.",
