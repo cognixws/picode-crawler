@@ -1,23 +1,31 @@
 {
   "id": "crawler",
   "name": "Crawler",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "apiVersion": 2,
   "publisher": "COGNIX[SE]",
   "description": "A small procedural creature that walks over a page's boxes while an agent works on it. Illustrative: it shows activity, not what the agent reads.",
   "icon": "icons/crawler.svg",
   "ui": {
     "pages": [
-      { "id": "scan", "title": "Crawler", "path": "ui/scan.html" }
+      {
+        "id": "scan",
+        "title": "Crawler",
+        "path": "ui/scan.html"
+      }
     ]
   },
   "agent": {
     "executor": {
       "protocol": "picode-tools/1",
       "command": "node",
-      "args": ["${extensionDir}/agent/execute.mjs"]
+      "args": [
+        "${extensionDir}/agent/execute.mjs"
+      ]
     },
-    "skills": ["skills/crawler"],
+    "skills": [
+      "skills/crawler"
+    ],
     "capabilities": [
       {
         "id": "show",
@@ -30,11 +38,28 @@
             "inputSchema": {
               "type": "object",
               "additionalProperties": false,
-              "required": ["path"],
+              "required": [
+                "path"
+              ],
               "properties": {
-                "path": { "type": "string", "minLength": 1, "maxLength": 1024, "description": "The HTML file: absolute, or relative to your working folder." },
-                "stop_when_done": { "type": "boolean", "description": "Stop the creature when you stop working (default true). Needs capabilities [\"picode\"] at publish, which the human allows once." },
-                "highlights": { "type": "boolean", "description": "Fill the boxes the creature stands on (default false). Leave it off for analysis work: a filled box reads as 'this was read'." }
+                "path": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 1024,
+                  "description": "The HTML file: absolute, or relative to your working folder."
+                },
+                "stop_when_done": {
+                  "type": "boolean",
+                  "description": "Stop the creature when you stop working (default true). Needs capabilities [\"picode\"] at publish, which the human allows once."
+                },
+                "highlights": {
+                  "type": "boolean",
+                  "description": "Fill the boxes the creature stands on (default false). Leave it off for analysis work: a filled box reads as 'this was read'."
+                },
+                "descend": {
+                  "type": "boolean",
+                  "description": "Walk down the page, scrolling to follow (default false). Good for a long page such as a feed or a report."
+                }
               }
             }
           }

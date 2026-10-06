@@ -1,4 +1,4 @@
-/* Crawler 0.1.1 — github.com/cognixws/picode-crawler (Apache-2.0). Built from lib/; do not edit. */
+/* Crawler 0.1.2 — github.com/cognixws/picode-crawler (Apache-2.0). Built from lib/; do not edit. */
 (function () {
 "use strict";
 // The crawler's engine, with no DOM: a tree of boxes, a hierarchical search
@@ -244,18 +244,47 @@ function steer(c, dt, tree) {
     }
     c.nextWaypoint = c.t + 1.2 + rnd() * 1.8;
   }
+  // A heading range (descending a page): the next spot is never behind.
+  const H = o.heading;
+  const hx = H ? Math.cos(H.toward) : 0, hy = H ? Math.sin(H.toward) : 0;
+  if (H) {
+    const along = (c.waypoint.x - body.x) * hx + (c.waypoint.y - body.y) * hy;
+    if (along < 5) { c.waypoint.x += hx * (5 - along); c.waypoint.y += hy * (5 - along); }
+  }
   const dx = c.waypoint.x - body.x, dy = c.waypoint.y - body.y;
   const d = hypot(dx, dy) || 1;
   const want = Math.min(o.speed, d * 2.2);
   const tx = (dx / d) * want, ty = (dy / d) * want;
   const k = 1 - Math.exp(-dt * 3.2);
   body.vx += (tx - body.vx) * k; body.vy += (ty - body.vy) * k;
+  if (H) {
+    const back = body.vx * hx + body.vy * hy;
+    if (back < 0) { body.vx -= hx * back; body.vy -= hy * back; }
+  }
   body.x += body.vx * dt; body.y += body.vy * dt;
   const sp = hypot(body.vx, body.vy);
   if (sp > 8) {
     let da = Math.atan2(body.vy, body.vx) - body.a;
     da = Math.atan2(Math.sin(da), Math.cos(da));
     body.a += clamp(da, -dt * 3, dt * 3);
+  }
+  if (H) {
+    // Never turned more than `within` from the direction it travels.
+    let off = Math.atan2(Math.sin(body.a - H.toward), Math.cos(body.a - H.toward));
+    off = clamp(off, -H.within, H.within);
+    body.a = H.toward + off;
+  }
+}
+
+// The page scrolled under the creature by (dx, dy): what is not held by a
+// box moves with it, so the creature keeps its place on the page.
+function shift(c, dx, dy) {
+  const move = (p) => { if (p) { p.x += dx; p.y += dy; } };
+  move(c.body); move(c.waypoint);
+  for (const leg of c.legs) {
+    if (!leg.anchor) move(leg.foot);
+    if (leg.step) { move(leg.step.from); move(leg.step.point); }
+    for (const j of leg.joints) move(j);
   }
 }
 
@@ -458,7 +487,13 @@ function domTree(root = document.body, ignore = () => false, clip = null) {
     if (node.el && node.el.isConnected) {
       const b = node.el.getBoundingClientRect();
       // Inside the clip (a page's scrolling area): nothing under a toolbar.
-      if (b.width >= 1 && b.height >= 1 && b.top >= bounds.top - 1 && b.bottom <= bounds.bottom + (clip ? 1 : 0) && b.bottom > bounds.top && b.top < bounds.bottom) {
+      // A container only has to overlap the area: a long post or a scrolled
+      // column starts far above the view and still holds what is on screen.
+      // A leaf must lie inside it (nothing half under a toolbar).
+      const inside = node.children
+        ? b.bottom > bounds.top && b.top < bounds.bottom
+        : b.top >= bounds.top - 1 && b.bottom <= bounds.bottom + (clip ? 1 : 0) && b.bottom > bounds.top && b.top < bounds.bottom;
+      if (b.width >= 1 && b.height >= 1 && inside) {
         const cs = node.children ? null : getComputedStyle(node.el);
         if (!cs || (cs.visibility !== "hidden" && cs.opacity !== "0")) r = { x: b.left, y: b.top, w: b.width, h: b.height };
       }
@@ -608,6 +643,8 @@ function draw(ctx, f, colors, opts) {
 }
 
 // start(options) puts the crawler on the page and returns its controls.
+//   descend (walk down the page, scrolling to follow; true or {speed}),
+//   scroller (the element that scrolls, default the page),
 //   seed, home ({x, y} or a function of the viewport), scan (lines and boxes
 //   of the search, default true), highlights (fill the boxes it stands on,
 //   default false), motion ("auto" follows prefers-reduced-motion, "always"
@@ -624,7 +661,18 @@ function start(options = {}) {
   // Without a home of its own, the creature stays over the page's visible
   // content: a table on the left of a wide screen, not the empty middle.
   let content = null, contentAt = -1;
+  // Descending: home walks down the page and the page scrolls to keep the
+  // creature near the middle of the view, carrying it along.
+  const descend = opts.descend ? { speed: 38, ...(typeof opts.descend === "object" ? opts.descend : {}) } : null;
+  const scroller = opts.scroller || document.scrollingElement || document.documentElement;
+  const viewOf = () => (scroller === document.scrollingElement || scroller === document.documentElement ? { top: 0, height: innerHeight } : scroller.getBoundingClientRect());
+  let walkY = descend ? scroller.scrollTop + viewOf().top + viewOf().height * 0.4 : 0;
   const homeAt = () => {
+    if (descend && !opts.home) {
+      const v = viewOf();
+      if (!content || performance.now() - contentAt > 1000) { content = contentCenter(tree); contentAt = performance.now(); }
+      return { x: content.x, y: walkY - scroller.scrollTop };
+    }
     if (typeof opts.home === "function") return opts.home();
     if (opts.home) return opts.home;
     const now = performance.now();
@@ -639,13 +687,17 @@ function start(options = {}) {
     home: homeAt(),
     reach: 165 * scale, bodyLength: 40 * scale, bodyWidth: 14 * scale, wanderRadius: 150 * scale, speed: 70 * scale, stepLift: 9 * scale,
   });
+  if (descend) {
+    creature.o.heading = { toward: Math.PI / 2, within: Math.PI / 2 };
+    creature.body.a = Math.PI / 2;
+  }
   let dirty = false;
   const mo = new MutationObserver(() => { dirty = true; });
   mo.observe(opts.root || document.body, { childList: true, subtree: true, characterData: false });
   let colors = tokens();
   const themeMo = new MutationObserver(() => { colors = tokens(); });
   themeMo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme", "class", "style"] });
-  let raf = 0, last = 0, acc = 0, paused = false, stopped = false, rebuildAt = 0;
+  let raf = 0, last = 0, acc = 0, paused = false, stopped = false, rebuildAt = 0, lastScroll = 0;
   function size() {
     const dpr = Math.min(2, devicePixelRatio || 1);
     canvas.width = Math.round(innerWidth * dpr);
@@ -669,6 +721,19 @@ function start(options = {}) {
     let n = 0;
     if (!paused) while (acc >= STEP && n < 6) { tree.newFrame(); update(creature, tree, step); acc -= STEP; n++; }
     if (paused || creature.calm) acc = 0;
+    if (descend && n && !creature.calm) {
+      const v = viewOf();
+      walkY += descend.speed * n * STEP;
+      const want = creature.body.y - (v.top + v.height * 0.5);
+      if (want > 1) {
+        const before = scroller.scrollTop;
+        scroller.scrollTop = before + Math.min(want, 8);
+        const moved = scroller.scrollTop - before;
+        if (moved) shift(creature, 0, -moved);
+        else walkY = Math.min(walkY, scroller.scrollTop + v.top + v.height - 120); // the end of the page
+      }
+      if (Math.abs(scroller.scrollTop - lastScroll) > 300) { dirty = true; lastScroll = scroller.scrollTop; }
+    }
     tree.newFrame();
     ctx.clearRect(0, 0, innerWidth, innerHeight);
     ctx.save();
@@ -724,6 +789,7 @@ function autostart() {
       highlights: el.hasAttribute("data-highlights"),
       scan: el.getAttribute("data-scan") !== "off",
       motion: el.getAttribute("data-motion") || "auto",
+      descend: el.hasAttribute("data-descend"),
     });
     window.crawler = handle;
     watchAgent(handle, el.getAttribute("data-agent"));
@@ -732,6 +798,6 @@ function autostart() {
   else go();
 }
 
-window.Crawler = Object.freeze({ version: "0.1.1", start, watchAgent });
+window.Crawler = Object.freeze({ version: "0.1.2", start, watchAgent });
 autostart();
 })();

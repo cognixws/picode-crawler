@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.2 — 2026-10-06
+
+- **Descend mode** (`data-descend`, or `descend: true` / `{speed}` from
+  script): the creature walks down a long page, never turned more than 90°
+  from straight down and never walking back up, and the page scrolls to keep
+  it near the middle of the view, carrying it along.
+- Fixed: on a scrolled page the creature found nothing to stand on. A long
+  post or a column that starts far above the view was skipped whole, with
+  everything on screen inside it.
+
 ## 0.1.1 — 2026-10-06
 
 - Legs fan out in order around the body (knees along their rest directions,

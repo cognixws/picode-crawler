@@ -38,8 +38,9 @@ walking until the page is replaced).
 | `data-highlights` | Fill the boxes it stands on (off by default: a fill reads as "this was read") |
 | `data-scan="off"` | No search lines |
 | `data-motion="always"` | Animate even when the system asks for reduced motion |
+| `data-descend` | Walk down the page, never turning more than 90° from down; the page scrolls to follow |
 
-From script: `Crawler.start({seed, home, scan, highlights, motion, root})`
+From script: `Crawler.start({seed, home, scan, highlights, motion, root, descend, scroller})`
 returns `{pause, resume, set, stop}`. An element with `data-crawler-ignore`
 (and everything inside it) is never stepped on.
 

@@ -23,6 +23,7 @@ if (request.protocol !== "picode-tools/1" || request.capability !== "show" || re
       workDir: ctx.workDir || process.cwd(),
       agent: args.stop_when_done === false ? "" : (ctx.agent || ""),
       highlights: args.highlights === true,
+      descend: args.descend === true,
     });
     const caps = out.watching ? ' and capabilities ["picode"]' : "";
     const lines = [

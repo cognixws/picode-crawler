@@ -69,3 +69,7 @@ test("the executor answers in text, and refuses an unknown tool", () => {
   const bad = exec({ protocol: "picode-tools/1", capability: "show", tool: "nope", arguments: {}, context: {} });
   assert.equal(bad.isError, true);
 });
+
+test("descend adds its attribute", () => {
+  assert.match(inject("<body></body>", { descend: true }), /<script src="crawler.js" data-crawler data-descend><\/script>/);
+});

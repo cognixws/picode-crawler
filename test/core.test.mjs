@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { createCreature, update, frame, search, wrongSide, clearSpot, solveChain, gripPoint, distToRect, neighbours, random } from "../lib/core.mjs";
+import { createCreature, update, frame, search, wrongSide, clearSpot, shift, solveChain, gripPoint, distToRect, neighbours, random } from "../lib/core.mjs";
 
 // A page of boxes in rows, like a reply thread: rows hold small leaves.
 // `dy` scrolls everything, the way a page scroll moves every box.
@@ -186,4 +186,34 @@ test("the body comes to rest off small boxes when there is room", () => {
     if (c.waypoint !== last) { last = c.waypoint; picks++; if (clearSpot(c, tree, c.waypoint)) clear++; }
   }
   assert.ok(picks > 5 && clear / picks > 0.8, `${clear} of ${picks} resting spots were clear`);
+});
+
+test("descending: never turned more than 90° from down, never walking back up", () => {
+  const { tree } = page({ rows: 60 });
+  const c = createCreature({ seed: 12, home: { x: 400, y: 300 }, heading: { toward: Math.PI / 2, within: Math.PI / 2 } });
+  c.body.a = Math.PI / 2;
+  let worst = 0, up = 0;
+  for (let i = 0; i < 1200; i++) {
+    const home = { x: 400, y: 300 + i * 0.6 };
+    const y0 = c.body.y;
+    update(c, tree, { home });
+    const off = Math.abs(Math.atan2(Math.sin(c.body.a - Math.PI / 2), Math.cos(c.body.a - Math.PI / 2)));
+    worst = Math.max(worst, off);
+    if (c.body.y < y0 - 1e-9) up++;
+  }
+  assert.ok(worst <= Math.PI / 2 + 1e-9, `turned ${(worst * 180 / Math.PI).toFixed(1)}° from down`);
+  assert.equal(up, 0, "the body moved up");
+  assert.ok(c.body.y > 600, `it went down the page (y ${c.body.y.toFixed(0)})`);
+});
+
+test("a scroll shift moves the creature but not the feet its boxes hold", () => {
+  const { tree } = page();
+  const c = createCreature({ seed: 3, home: { x: 400, y: 600 } });
+  for (let i = 0; i < 120; i++) update(c, tree);
+  const held = c.legs.find((l) => l.anchor && !l.step), free = c.legs.find((l) => !l.anchor);
+  const b = { ...c.body }, h = { ...held.foot }, f = free && { ...free.foot };
+  shift(c, 0, -50);
+  assert.equal(c.body.y, b.y - 50);
+  assert.deepEqual(held.foot, h, "a held foot stays with its box");
+  if (f) assert.equal(free.foot.y, f.y - 50);
 });
